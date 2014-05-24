@@ -565,29 +565,30 @@ void PX4FirmwareUploader::run()
                 BIO_write(bi, bytes.data(), bytes.size());
                 EVP_PKEY *pkey = d2i_PUBKEY_bio(bi, NULL);
                 BIO_free(bi);
+                bool failed = false;
                 if(!pkey)
                 {
-                    QLOG_FATAL() << "PX4Firmware Uploader failed OTP check! Internal public key is not valid. Possible corrupted install?";
-                    emit statusUpdate("PX4Firmware Uploader failed OTP check! Internal public key is not valid. Possible corrupted install?");
-                    emit error("PX4Firmware Uploader failed OTP check! Internal public key is not valid. Possible corrupted install?");
-                    m_port->close();
-                    delete m_port;
-                    return;
+                    //Bad key failure
+                    QLOG_WARN() << "Certificate of Authenticity check Failed! Please check with your autopilot hardware supplier for support";
+                    emit statusUpdate("Certificate of Authenticity check Failed! Please check with your autopilot hardware supplier for support");
+                    emit warning("Certificate of Authenticity check Failed! Please check with your autopilot hardware supplier for support");
+                    failed = true;
                 }
 
                 int verify = RSA_verify(NID_sha1,(unsigned char*)serial.data(),serial.size(),(unsigned char*)signature.data(),signature.size(),pkey->pkey.rsa);
                 if (verify)
                 {
                     //Failed!
-                    QLOG_FATAL() << "PX4Firmware Uploader failed OTP check";
-                    emit statusUpdate("PX4Firmware Uploader failed OTP check");
-                    emit error("PX4Firmware Uploader failed OTP check! Are you sure this is a legimiate 3DR PX4?");
-                    m_port->close();
-                    delete m_port;
-                    return;
+                    QLOG_WARN() << "Certificate of Authenticity check Failed! Please check with your autopilot hardware supplier for support";
+                    emit statusUpdate("Certificate of Authenticity check Failed! Please check with your autopilot hardware supplier for support");
+                    emit warning("Certificate of Authenticity check Failed! Please check with your autopilot hardware supplier for support");
+                    failed = true;
                 }
-                QLOG_DEBUG() << "OTP verification successful";
-                emit statusUpdate("OTP verification successful");
+                if (!failed)
+                {
+                    QLOG_DEBUG() << "OTP verification successful";
+                    emit statusUpdate("OTP verification successful");
+                }
 #endif //Q_OS_WIN
 
                 //QLOG_INFO() << "OTP Successful";
